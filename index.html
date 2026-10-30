@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="pt-BR"><head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Quirino Barbers 💈</title><link rel="stylesheet" href="style.css">
+</head><body>
+<h1>Quirino Barbers 💈</h1>
+<div id="nav"></div>
+<section class="hero">
+  <h2>Estilo e tradição em cada corte</h2>
+  <p>Atendimento com hora marcada, sem fila e sem espera.</p>
+  <a class="btn" href="agendar.html">Agendar agora</a>
+</section>
+<h2>Serviços</h2><div class="cards" id="servicos"></div>
+<h2>Nossos barbeiros</h2><div class="cards" id="barbeiros"></div>
+<h2>Horário de funcionamento</h2>
+<p>Segunda a sábado, das 9h às 18h.</p>
+<p><small>Site de demonstração. Nomes, preços e dados são fictícios.</small></p>
+<script src="data.js"></script>
+<script>
+document.getElementById("nav").innerHTML = NAV;
+document.getElementById("servicos").innerHTML = SERVICOS.map(s =>
+  `<a class="card" href="agendar.html?servico=${s.id}"><span>${s.nome}</span><b>${brl(s.preco)}</b></a>`).join("");
+document.getElementById("barbeiros").innerHTML = BARBEIROS.map(b =>
+  `<div class="card barbeiro"><span class="avatar">${b.nome[0]}</span><span>${b.nome}</span></div>`).join("");
+</script>
+</body></html>

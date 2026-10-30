@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="pt-BR"><head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Agendar horário</title><link rel="stylesheet" href="style.css">
+</head><body>
+<h1>Agendar horário</h1>
+<div id="nav"></div>
+<p id="msg"></p>
+<form id="f">
+  <label for="nome">Nome:</label><br><input id="nome" maxlength="80" required><br><br>
+  <label for="telefone">Telefone:</label><br><input id="telefone" maxlength="20" required><br><br>
+  <label for="servico">Serviço:</label><br><select id="servico"></select><br><br>
+  <label for="barbeiro">Barbeiro:</label><br><select id="barbeiro"></select><br><br>
+  <label for="dia">Data:</label><br><input type="date" id="dia" required><br><br>
+  <label for="hora">Horário:</label><br><select id="hora"></select><br><br>
+  <button type="submit">Agendar</button>
+</form>
+<script src="data.js"></script>
+<script>
+const $ = id => document.getElementById(id);
+$("nav").innerHTML = NAV;
+const pre = new URLSearchParams(location.search).get("servico");
+$("servico").innerHTML = SERVICOS.map(s => `<option value="${s.id}"${pre == s.id ? " selected" : ""}>${s.nome}</option>`).join("");
+$("barbeiro").innerHTML = BARBEIROS.map(b => `<option value="${b.id}">${b.nome}</option>`).join("");
+const hoje = new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+$("dia").min = hoje;
+
+const ocupados = () => lerAg().filter(a => a.barbeiro == $("barbeiro").value && a.dia == $("dia").value && a.status != "cancelado").map(a => a.hora);
+function horas() {
+  const oc = ocupados();
+  $("hora").innerHTML = HORARIOS.map(h => `<option value="${h}"${oc.includes(h) ? " disabled" : ""}>${h}${oc.includes(h) ? " (ocupado)" : ""}</option>`).join("");
+  const livre = [...$("hora").options].find(o => !o.disabled);
+  if (livre) $("hora").value = livre.value;
+}
+$("barbeiro").onchange = $("dia").onchange = horas;
+horas();
+
+function aviso(t) { $("msg").innerHTML = ""; const s = document.createElement("strong"); s.textContent = t; $("msg").appendChild(s); }
+
+$("f").onsubmit = async e => {
+  e.preventDefault();
+  const dia = $("dia").value, hora = $("hora").value;
+  if (new Date(dia + "T12:00").getDay() == 0) return aviso("Não abrimos aos domingos.");
+  if (ocupados().includes(hora)) return aviso("Esse horário já está ocupado. Escolha outro.");
+  const serv = SERVICOS.find(s => s.id == $("servico").value);
+  const barb = BARBEIROS.find(b => b.id == $("barbeiro").value);
+  const l = lerAg();
+  l.push({ id: Date.now(), cliente: $("nome").value.trim(), telefone: $("telefone").value.trim(),
+           servico: serv.nome, preco: serv.preco, barbeiro: barb.id, barbeiroNome: barb.nome,
+           dia, hora, status: "agendado", visto: false });
+  salvarAg(l);
+  fetch("/.netlify/functions/notificar", { method: "POST", body: JSON.stringify(l[l.length - 1]) }).catch(() => {});
+  aviso("Agendamento feito para " + dia.split("-").reverse().join("/") + " às " + hora + ". Até lá!");
+  $("f").reset(); $("dia").min = hoje; horas();
+};
+</script>
+</body></html>

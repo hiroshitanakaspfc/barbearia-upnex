@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="pt-BR"><head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Painel do dono</title><link rel="stylesheet" href="style.css">
+</head><body>
+<h1>Painel do dono</h1>
+<div id="nav"></div>
+<div id="login">
+  <form id="fl">
+    <label for="u">Usuário:</label><br><input id="u" required><br><br>
+    <label for="s">Senha:</label><br><input id="s" type="password" required><br><br>
+    <button type="submit">Entrar</button>
+    <p id="erro"></p>
+  </form>
+</div>
+<div id="app" hidden>
+  <p><a href="#" id="sair">Sair</a></p>
+  <div id="aviso" class="aviso" hidden>🔔 Novo agendamento!</div>
+  <div class="cards stats" id="stats"></div>
+  <form class="inline" id="fv"><button type="submit">Marcar todos como vistos</button></form>
+  <div id="lista"></div>
+</div>
+<script src="data.js"></script>
+<script>
+const $ = id => document.getElementById(id);
+$("nav").innerHTML = NAV;
+// Login só de demonstração (fica no navegador). Troque a senha abaixo.
+const USER = "admin", PASS = "admin123";
+const esc = t => String(t).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+let ultimo = 0;
+
+function beep() { try { const c = new AudioContext(), o = c.createOscillator(); o.connect(c.destination); o.frequency.value = 880; o.start(); o.stop(c.currentTime + .25); } catch (e) {} }
+
+function entrar() { $("login").hidden = true; $("app").hidden = false; ultimo = Math.max(0, ...lerAg().map(a => a.id)); desenhar(); setInterval(desenhar, 5000); }
+$("fl").onsubmit = e => {
+  e.preventDefault();
+  if ($("u").value == USER && $("s").value == PASS) { sessionStorage.setItem("adm", "1"); entrar(); }
+  else $("erro").textContent = "Usuário ou senha incorretos.";
+};
+$("sair").onclick = e => { e.preventDefault(); sessionStorage.removeItem("adm"); location.reload(); };
+$("fv").onsubmit = e => { e.preventDefault(); salvarAg(lerAg().map(a => ({ ...a, visto: true }))); desenhar(); };
+
+function mudar(id, st) { salvarAg(lerAg().map(a => a.id == id ? { ...a, status: st, visto: true } : a)); desenhar(); }
+
+function desenhar() {
+  const l = lerAg().sort((a, b) => (a.dia + a.hora).localeCompare(b.dia + b.hora));
+  const hoje = new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+  const novos = l.filter(a => !a.visto).length;
+  const maxId = Math.max(0, ...l.map(a => a.id));
+  if (maxId > ultimo) { ultimo = maxId; $("aviso").hidden = false; document.title = "🔔 Novo agendamento!"; beep(); }
+  $("stats").innerHTML =
+    `<div class="card"><span>Hoje</span><b>${l.filter(a => a.dia == hoje && a.status == "agendado").length}</b></div>
+     <div class="card"><span>Novos</span><b>${novos}</b></div>
+     <div class="card"><span>Faturado (concluídos)</span><b>${brl(l.filter(a => a.status == "concluido").reduce((t, a) => t + a.preco, 0))}</b></div>`;
+  $("fv").hidden = novos == 0;
+  $("lista").innerHTML = l.length == 0 ? "<p>Nenhum agendamento ainda.</p>" :
+    `<table><tr><th>Cliente</th><th>Telefone</th><th>Serviço</th><th>Barbeiro</th><th>Data</th><th>Hora</th><th>Status</th><th>Ações</th></tr>` +
+    l.map(a => `<tr class="${a.visto ? "" : "novo"}"><td>${esc(a.cliente)}</td>
+      <td><a target="_blank" href="https://wa.me/55${a.telefone.replace(/\D/g, "")}">${esc(a.telefone)}</a></td>
+      <td>${esc(a.servico)}</td><td>${esc(a.barbeiroNome)}</td><td>${a.dia.split("-").reverse().join("/")}</td><td>${a.hora}</td>
+      <td><span class="tag ${a.status}">${a.status}</span></td>
+      <td>${a.status == "agendado" ? `<button onclick="mudar(${a.id},'concluido')">Concluir</button> <button value="cancelado" onclick="mudar(${a.id},'cancelado')">Cancelar</button>` : ""}</td></tr>`).join("") + "</table>";
+}
+if (sessionStorage.getItem("adm")) entrar();
+</script>
+</body></html>
